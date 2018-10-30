@@ -43,14 +43,15 @@ co.wrap = function (fn) {
 function co(gen) {
   var ctx = this;
   var args = slice.call(arguments, 1);
-
   // we wrap everything in a promise to avoid promise chaining,
   // which leads to memory leak errors.
   // see https://github.com/tj/co/issues/180
   return new Promise(function(resolve, reject) {
+    // gen实体化
     if (typeof gen === 'function') gen = gen.apply(ctx, args);
+    // 是不是 gen 如果不是 直接返回结果
     if (!gen || typeof gen.next !== 'function') return resolve(gen);
-
+    // 进行第一次的 next 函数的执行
     onFulfilled();
 
     /**
@@ -62,6 +63,7 @@ function co(gen) {
     function onFulfilled(res) {
       var ret;
       try {
+        // 对上一个 yield 返回结果
         ret = gen.next(res);
       } catch (e) {
         return reject(e);
@@ -96,7 +98,9 @@ function co(gen) {
      */
 
     function next(ret) {
+      // 判断是不是执行完了。执行完返回结果
       if (ret.done) return resolve(ret.value);
+      // 转化为promise
       var value = toPromise.call(ctx, ret.value);
       if (value && isPromise(value)) return value.then(onFulfilled, onRejected);
       return onRejected(new TypeError('You may only yield a function, promise, generator, array, or object, '
